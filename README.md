@@ -1,4 +1,4 @@
-**Repository of Business Forcasting Assignment_7_ARIMA**
+**Repository of Business Forcasting Assignment_7_ARIMA_Model**
 
 *This repository contains Assignment #7 of ARIMA Model on TotalQuestions (Stack Overflow) dataset and performing following activities:-*
 1. Explain the output
