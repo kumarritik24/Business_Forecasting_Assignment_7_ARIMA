@@ -1,0 +1,143 @@
+---
+title: "Assignment_7_ARIMA"
+author: "Ritik Kumar"
+date: "2024-11-22"
+output: html_document
+---
+
+## Importing the dataset
+```{r}
+library(forecast)
+library(ggplot2)
+library(readxl)
+library(tseries)
+
+#Import the dataset
+data<- read_excel("C:/Users/malho/Downloads/TotalQuestions_Stack_Overflow.xlsx")
+print(head(data))
+
+# Convert 'Month' column to Date type
+data$Month <- as.Date(data$Month, format = "%m/%d/%Y")
+
+# Convert it into Time Series data 
+data_ts <- ts(data$Python, start = c(2008,9), frequency = 12)
+
+# Plot the original time series data of Python Question from 2008-2022
+plot(data_ts, main = "Time Series Plot of Python Questions", xlab = "Time", ylab = "Number of Questions")
+```
+
+##### Initial Observations
+
+* First we import the dataset and print the head of data to see our data must be succesfully uploaded or not.
+* In the second step we convert the month column to data type to better use the column in arima model.
+* Convert the data into time series data format to forecast the data.
+* We start with plotting the time series to visualise and understand the data.
+* The plot shows that there is an increasing trend in the python questions starting from 2008 till around 2021.
+* From 2021 till 2024, there has been observed a decreasing trend in the python questions.
+* If we were to forecast the data, we should be considering the window from 2018.
+
+## Considering only a window from 2018 to 2024
+```{r}
+data_ts_actual <- window(data_ts, start = 2018, end = 2024 )
+plot(data_ts_actual, main = "Time Series Plot of Python Questions from 2018 - 2024", xlab = "Time", ylab = "Number of Questions")
+```
+
+* Window function has been used from the year 2018 to 2024 forecast the data better.
+* If we consider the whole data, that might not give us the exact forecast.
+* From 2018 it will be more than 7 years data that we are considering and this data should be good enough to be considered for time series forecasting.
+
+## 1. Fit ARIMA and Explain Output
+```{r}
+# NSDIFFS only works for seasonal data
+nsdiffs(data_ts_actual)
+
+#tsdisplay plots ACF,PACF and timeseries plot together 
+tsdisplay(data_ts_actual)
+
+# Fit ARIMA model
+arima_model <- auto.arima(data_ts_actual)
+arima_model
+
+# Print the summary of the ARIMA model
+summary(arima_model)
+```
+
+## Interpretation
+* nsdiffs specifies that no seasonal differencing is required for the time series.The data is already stationary in terms of seasonality, or the seasonal component is negligible.
+* tsdisplay plots ACF,PACF and timeseries plot together.For more understanding the data.
+* The ARIMA model fitted to the time series indicates the parameters (p, d, q) used. This suggests the autoregressive, differencing, and moving average terms for the series.
+* The AIC/BIC values in the model output help evaluate how well the model fits the data, with lower values indicating better fit.
+* The ARIMA(0,1,0)(1,0,0)[12] model is well-suited for the data and performs effectively in capturing both trends and seasonality.
+* We can use this model for short-term forecasting with confidence.
+* Low AIC (1250.03) and residual diagnostics confirm the model is well-suited for short-term forecasting.
+* The model is reliable, but consider SARIMA or external regressors for further improvement if necessary.
+
+## 3. Residual Analysis
+```{r}
+# We are not finished till we do some residual analysis
+#ACF plot, Box Ljung test and histogram and Timeseries plot
+
+# Plot ACF for residuals
+Acf(arima_model$residuals)
+
+
+# Plot PACF for residuals
+pacf(arima_model$residuals)
+
+#Plotting time series graph of residuals
+plot.ts(residuals(arima_model))
+
+#Plotting histogram graph of residuals
+hist(arima_model$residuals)
+
+#Box Ljung test
+Box.test(residuals(arima_model), lag=20, type="Ljung")
+
+# Do all the plots in one! 
+tsdiag(arima_model)
+```
+
+## Interpretation
+* Residual analysis assesses whether the model captures the underlying patterns in the data effectively. Key aspects include:
+* Checks for randomness in residuals. Ideally, residuals should be normally distributed with no visible patterns.
+* ACF/PACF of Residuals: Ensures no significant auto correlations remain in the residuals. If significant lags exist, it suggests the model has not captured all patterns in the data.
+* Autocorrelations of residuals should fall within confidence intervals.
+* Histogram seems to be normally distributed, this means model is correct and had no residuals.
+* Residuals should be random and without patterns.
+* Ljung-Box Test: A p-value > 0.05 indicates no significant auto correlations in residuals.That mean's it is a good fit.
+
+
+## 3.  Perform and Plot the forecast for the next five periods
+```{r}
+# Forecast the next 5 periods
+Final_forecast <- forecast(arima_model, h=5)
+
+# Plot the forecast
+plot(Final_forecast, main = "ARIMA Forecast for Python Questions for the next Five Periods")
+```
+
+##### Observations
+* The forecast plot visualizes the ARIMA model’s prediction for the next 5 periods.
+* Confidence intervals provide a range within which future values are expected to lie with a certain probability.
+* A narrow confidence interval indicates more precise predictions.
+
+## 4. Show the accuracy of your ARIMA model
+```{r}
+accuracy(arima_model)
+```
+
+## Interpretation
+* A small ME (close to 0) is good, as it shows the model has minimal bias. The value of -99.77 is fairly low compared to the RMSE and overall scale of the data, which is positive.
+* RMSE measures the average error magnitude, penalizing larger errors more heavily.An RMSE of 1347.805 represents an error of about 13.5%, which is reasonable for forecasting models.
+* MAE is the average absolute error, which is less sensitive to large deviations than RMSE. If the scale of Python questions is in the thousands, this suggests that the model is off by about 10% on average. This is acceptable but not highly precise.
+* MPE indicates the average percentage error, showing a slight underestimation (negative value). This is good, as the error is small and close to 0.
+* MAPE below 10% is considered a good forecasting model in most applications. As ARIMA model’s MAPE of 5.66% suggests it performs well in predicting the time series.
+* MASE compares the model error to a naive forecasting method (e.g., last observed value as the forecast). Values below 1 indicate that the model performs better than a naive method. The ARIMA Model MASE of 0.243 is excellent, as it significantly outperforms naive forecasting.
+* ACF1 should ideally be close to 0, indicating no autocorrelation in the residuals (i.e., the model has captured all patterns in the data). The ARIMA model ACF1 is low (0.07), which is a positive sign.
+
+
+## Conclusion 
+* The ARIMA(0,1,0)(1,0,0)[12] model performs well, with a low MAPE (5.66%) and MASE (0.243), indicating strong predictive accuracy and significant improvement over naive forecasting. 
+* Residual diagnostics show no significant autocorrelation (ACF1 = 0.07) and randomness, validating the model's reliability. 
+* Forecasts align with observed trends, providing realistic predictions.
+* Overall, the model is robust and suitable for short-term forecasting.
